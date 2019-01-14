@@ -1,3 +1,4 @@
 package dkron
 
-var Version = "0.10.2"
+var Name = "Dkron"
+var Version = "devel"

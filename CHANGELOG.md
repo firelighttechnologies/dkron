@@ -1,3 +1,35 @@
+## 0.11.1 (2018-10-07)
+
+ - Add support for passing payload to command STDIN (@gustavosbarreto)
+ - add support for etcdv3 (@kevynhale)
+ - Use etcdv3 by default
+ - Jobs static URLs fixed
+
+## 0.11.0 (2018-09-24)
+
+- 1.11 stable not in docker hub yet
+- Add builtin http plugin
+- Add executor shell su option (@tengattack)
+- Better dockerfile for testing
+- Better flag help
+- Don't depend on michellh/cli
+- Filter jobs by tags (@digitalcrab)
+- Fix cluster panic bug (@tengattack)
+- Release with goreleaser
+- Use cobra for flags
+- Use go modules
+- add create & update job features (@wd1900)
+
+## 0.10.4 (2018-07-30)
+
+- Replace RPC with gRPC
+- Fix compose files (@kevynhale)
+
+## 0.10.3 (2018-06-20)
+
+- Replace goxc with makefile
+- Pro docs
+
 ## 0.10.2 (2018-05-23)
 
 ### Bug fixes

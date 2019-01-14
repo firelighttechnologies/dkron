@@ -1,9 +1,7 @@
 ---
 title: Getting started
-weight: 1
+weight: 30
 ---
-
-Welcome to the intro guide to dkron! This will explain how to setup dkron, how easy is to use it, what problems could it help you to solve, etc.
 
 ## Introduction
 
@@ -23,32 +21,28 @@ You can choose whether a job is run on a node or nodes by specifying tags and a 
 
 All the execution responses will be gathered by the scheduler and stored in the database.
 
-## Requirements
+## Backend stores
 
-Dkron relies on the key-value store for data storage, you can run an instance of the distributed store in the same machines as Dkron or connect it to your existing cluster.
+Dkron relies on the key-value store for data storage, an instance of the distributed store can be run in the same machines as Dkron or connect it to an already existing cluster.
 
-It can use etcd, Consul or Zookeeper as data stores. To install any of this systems got to their web site:
+{{% notice note %}}
+By default dkron will start with a file based, embedded KV store called BoltDB, it is functional for a single node demo but does not offers clustering or HA.
+{{% /notice %}}
+
+It is compatible with etcd, Consul, Zookeeper, BoltDB and partially with Redis. For instructions on how to install and configure any one of these systems refer to their official sites:
 
 - [etcd](https://coreos.com/etcd/docs/latest/)
 - [Consul](https://consul.io/intro/getting-started/install.html)
 - [ZooKeeper](https://zookeeper.apache.org/doc/r3.3.3/zookeeperStarted.html)
-
-## Installation
-
-### Recommended method
-
-APT repository: `deb [trusted=yes] https://apt.fury.io/victorcoder/ /`
-
-Unstable release: `sudo apt-get install dkron-unstable`
-Stable release: `sudo apt-get install dkron`
-
-### Other methods
-
-Simply download the packaged archive for your platform from the [downloads page](https://github.com/victorcoder/dkron/releases), extract the package to a shared location in your drive, like `/opt/local` and run it from there.
+- [Redis](https://redis.io/topics/quickstart)
 
 ## Configuration
 
-See the [configuration section](configuration).
+See the [installation](/basics/installation).
+
+## Configuration
+
+See the [configuration](/basics/configuration).
 
 ## Usage
 
@@ -56,14 +50,45 @@ By default Dkron uses the following ports:
 
 - `8946` for communicating between agents
 - `8080` for HTTP for the API and Dashboard
-- `6868` for RPC comunication between clients.
+- `6868` for RPC comunication between agents.
 
-**Be sure you have opened this ports (or the ones that you configured) in your firewall or AWS security groups.**
+{{% notice note %}}
+Be sure you have opened this ports (or the ones that you configured) in your firewall or AWS security groups.
+{{% /notice %}}
 
-By default dkron will try to use a local etcd server running in the same machine and in the default port. You can specify the store by setting the `backend` and `backend-machines` flag in the config file, env variables or as a command line flag.
+By default dkron will use the embedded BoltDB KV store. A different store can be specified setting `backend` and `backend-machines` flag in the config file, env variables or as a command line flag.
 
-To start a Dkron server instance just run:
+To start a Dkron server instance:
 
 ```
-dkron agent -server
+dkron agent --server
 ```
+
+Time to add the first job:
+
+{{% notice note %}}
+This job will only run in just one `dkron_server` node due to the node count in the tag. Refer to the [target node spec](/usage/target-nodes-spec) for details.
+{{% /notice %}}
+
+```bash
+curl localhost:8080/v1/jobs -XPOST -d '{
+  "name": "job1",
+  "schedule": "@every 10s",
+  "timezone": "Europe/Berlin",
+  "owner": "Platform Team",
+  "owner_email": "platform@example.com",
+  "disabled": false,
+  "tags": {
+    "dkron_server": "true:1"
+  },
+  "concurrency": "allow",
+  "executor": "shell",
+  "executor_config": {
+    "command": "date"
+  }
+}`
+```
+
+That's it!
+
+#### To start configuring an HA installation of Dkron follow the [clustering guide](/usage/clustering)

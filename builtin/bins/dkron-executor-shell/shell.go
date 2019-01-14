@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"log"
 	"os"
 	"os/exec"
@@ -36,8 +37,13 @@ func (s *Shell) Execute(args *dkron.ExecuteRequest) ([]byte, error) {
 	}
 	command := args.Config["command"]
 	env := strings.Split(args.Config["env"], ",")
+	cwd, _ := args.Config["cwd"]
 
-	cmd, err := buildCmd(command, shell, env)
+	cmd, err := buildCmd(command, shell, env, cwd)
+	if err != nil {
+		return nil, err
+	}
+	err = setCmdAttr(cmd, args.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -49,6 +55,21 @@ func (s *Shell) Execute(args *dkron.ExecuteRequest) ([]byte, error) {
 		log.Printf("shell: Script '%s' slow, execution exceeding %v", command, 2*time.Hour)
 	})
 	defer slowTimer.Stop()
+
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, err
+	}
+
+	defer stdin.Close()
+
+	payload, err := base64.StdEncoding.DecodeString(args.Config["payload"])
+	if err != nil {
+		return nil, err
+	}
+
+	stdin.Write(payload)
+	stdin.Close()
 
 	log.Printf("shell: going to run %s", command)
 	err = cmd.Start()
@@ -62,17 +83,19 @@ func (s *Shell) Execute(args *dkron.ExecuteRequest) ([]byte, error) {
 	}
 
 	err = cmd.Wait()
+
+	// Always log output
+	log.Printf("shell: Command output %s", output)
+
 	if err != nil {
 		return nil, err
 	}
-
-	log.Printf("shell: Command output %s", output)
 
 	return output.Bytes(), nil
 }
 
 // Determine the shell invocation based on OS
-func buildCmd(command string, useShell bool, env []string) (cmd *exec.Cmd, err error) {
+func buildCmd(command string, useShell bool, env []string, cwd string) (cmd *exec.Cmd, err error) {
 	var shell, flag string
 
 	if useShell {
@@ -94,6 +117,6 @@ func buildCmd(command string, useShell bool, env []string) (cmd *exec.Cmd, err e
 	if env != nil {
 		cmd.Env = append(os.Environ(), env...)
 	}
-
+	cmd.Dir = cwd
 	return
 }

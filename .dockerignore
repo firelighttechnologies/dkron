@@ -2,9 +2,11 @@ docs
 static
 site
 public
-downloads
 *.etcd
 vendor
 docker-compose
 dkron_theme
-etcd.*
+build/
+website
+dkron-*
+main

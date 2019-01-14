@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/hashicorp/go-plugin"
 	"github.com/kardianos/osext"
+	"github.com/sirupsen/logrus"
 	"github.com/victorcoder/dkron/dkron"
 	dkplugin "github.com/victorcoder/dkron/plugin"
 )
@@ -100,7 +100,7 @@ func getPluginName(file string) (string, bool) {
 	}
 
 	// This cleans off the .exe for windows plugins
-	name := strings.TrimRight(parts[2], ".exe")
+	name := strings.TrimSuffix(parts[2], ".exe")
 	return name, true
 }
 

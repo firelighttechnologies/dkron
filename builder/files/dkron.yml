@@ -1,0 +1,23 @@
+# Dkron example configuration file
+# backend: etcd
+# backend-machine: 127.0.0.1:2379
+# server: false
+# log-level: debug
+# tags:
+#   role: web
+#   datacenter: east
+# keyspace: dkron
+# encrypt: a-valid-key-generated-with-dkron-keygen
+# join:
+#   - 10.0.0.1
+#   - 10.0.0.2
+#   - 10.0.0.3
+# webhook-url: https://hooks.slack.com/services/XXXXXX/XXXXXXX/XXXXXXXXXXXXXXXXXXXX
+# webhook-payload: "payload={\"text\": \"{{.Report}}\", \"channel\": \"#foo\"}"
+# webhook-headers: Content-Type:application/x-www-form-urlencoded
+# mail-host: email-smtp.eu-west-1.amazonaws.com
+# mail-port: 25
+# mail-username": mailuser
+# mail-password": mailpassword
+# mail-from": cron@example.com
+# mail-subject-prefix: [Dkron]

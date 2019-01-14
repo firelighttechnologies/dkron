@@ -1,0 +1,141 @@
+project_name: dkron
+builds:
+  - main: ./builtin/bins/dkron-executor-http/
+    binary: dkron-executor-http
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - freebsd
+      - windows
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+  - main: ./builtin/bins/dkron-executor-shell/
+    binary: dkron-executor-shell
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - freebsd
+      - windows
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+  - main: ./builtin/bins/dkron-processor-files/
+    binary: dkron-processor-files
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - freebsd
+      - windows
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+  - main: ./builtin/bins/dkron-processor-log/
+    binary: dkron-processor-log
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - freebsd
+      - windows
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+  - main: ./builtin/bins/dkron-processor-syslog/
+    binary: dkron-processor-syslog
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - freebsd
+      - windows
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+  - main: .
+    binary: dkron
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - freebsd
+      - windows
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X github.com/victorcoder/dkron/dkron.Version={{.Version}}
+
+nfpm:
+  vendor: Distributed Works
+  homepage: https://dkron.io
+  maintainer: Victor Castell <victor@distrib.works>
+  description: Distributed, fault tolerant job scheduling system
+  license: LGPL 3.0
+
+  formats:
+    - deb
+    - rpm
+
+  # Override default /usr/local/bin destination for binaries
+  bindir: /usr/bin
+
+  empty_folders:
+    - /var/log/dkron
+
+  #files:
+  #  "builder/files/": "/etc/init.d"
+  #  "path/**/glob": "/var/foo/glob"
+  config_files:
+    "builder/files/dkron.yml": "/etc/dkron/dkron.yml"
+    "builder/files/dkron.service": "/lib/systemd/system/dkron.service"
+
+  overrides:
+    rpm:
+      replacements:
+        amd64: x86_64
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
+    - '^Merge pull request'
+
+dockers:
+  - binary: dkron
+    dockerfile: Dockerfile.hub
+    extra_files:
+      - dist/linux_amd64
+    image_templates:
+      - "dkron/dkron:latest"
+      - "dkron/dkron:{{ .Tag }}"
+      - "dkron/dkron:{{ .Major }}"

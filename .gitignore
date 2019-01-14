@@ -13,6 +13,12 @@ main
 /dkron-processor-*
 /dkron-executor-*
 *.log
-.glide
 config/
-.idea/
+dist
+dkron.db
+static/node_modules
+
+.DS_Store
+.vscode
+tags
+.sass-cache

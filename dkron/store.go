@@ -6,13 +6,15 @@ import (
 	"sort"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/abronan/valkeyrie"
 	"github.com/abronan/valkeyrie/store"
+	"github.com/abronan/valkeyrie/store/boltdb"
 	"github.com/abronan/valkeyrie/store/consul"
 	"github.com/abronan/valkeyrie/store/etcd/v2"
+	"github.com/abronan/valkeyrie/store/etcd/v3"
 	"github.com/abronan/valkeyrie/store/redis"
 	"github.com/abronan/valkeyrie/store/zookeeper"
+	"github.com/sirupsen/logrus"
 	"github.com/victorcoder/dkron/cron"
 )
 
@@ -30,7 +32,6 @@ type Storage interface {
 	GetLastExecutionGroup(jobName string) ([]*Execution, error)
 	GetExecutionGroup(execution *Execution) ([]*Execution, error)
 	GetGroupedExecutions(jobName string) (map[int64][]*Execution, []int64, error)
-	GetCurrentExecutions(nodeName string) ([]*Execution, error)
 	SetExecution(execution *Execution) (string, error)
 	DeleteExecutions(jobName string) error
 	GetLeader() []byte
@@ -41,21 +42,24 @@ type Store struct {
 	Client   store.Store
 	agent    *Agent
 	keyspace string
-	backend  string
+	backend  store.Backend
 }
 
 type JobOptions struct {
 	ComputeStatus bool
+	Tags          map[string]string `json:"tags"`
 }
 
 func init() {
 	etcd.Register()
+	etcdv3.Register()
 	consul.Register()
 	zookeeper.Register()
 	redis.Register()
+	boltdb.Register()
 }
 
-func NewStore(backend string, machines []string, a *Agent, keyspace string, config *store.Config) *Store {
+func NewStore(backend store.Backend, machines []string, a *Agent, keyspace string, config *store.Config) *Store {
 	s, err := valkeyrie.NewStore(store.Backend(backend), machines, config)
 	if err != nil {
 		log.Error(err)
@@ -99,8 +103,6 @@ func (s *Store) SetJob(job *Job, copyDependentJobs bool) error {
 		return err
 	}
 	if ej != nil {
-		ej.Lock()
-		ej.Unlock()
 		// When the job runs, these status vars are updated
 		// otherwise use the ones that are stored
 		if ej.LastError.After(job.LastError) {
@@ -221,6 +223,29 @@ func (s *Store) validateJob(job *Job) error {
 	return nil
 }
 
+func (s *Store) jobHasTags(job *Job, tags map[string]string) bool {
+	if job == nil || job.Tags == nil || len(job.Tags) == 0 {
+		return false
+	}
+
+	res := true
+	for k, v := range tags {
+		var found bool
+
+		if val, ok := job.Tags[k]; ok && v == val {
+			found = true
+		}
+
+		res = res && found
+
+		if !res {
+			break
+		}
+	}
+
+	return res
+}
+
 // GetJobs returns all jobs
 func (s *Store) GetJobs(options *JobOptions) ([]*Job, error) {
 	res, err := s.Client.List(s.keyspace+"/jobs/", nil)
@@ -240,8 +265,13 @@ func (s *Store) GetJobs(options *JobOptions) ([]*Job, error) {
 			return nil, err
 		}
 		job.Agent = s.agent
-		if options != nil && options.ComputeStatus {
-			job.Status = job.GetStatus()
+		if options != nil {
+			if options.Tags != nil && len(options.Tags) > 0 && !s.jobHasTags(&job, options.Tags) {
+				continue
+			}
+			if options.ComputeStatus {
+				job.Status = job.GetStatus()
+			}
 		}
 		jobs = append(jobs, &job)
 	}
@@ -400,7 +430,9 @@ func (s *Store) SetExecution(execution *Execution) (string, error) {
 
 	execs, err := s.GetExecutions(execution.JobName)
 	if err != nil {
-		log.Errorf("store: No executions found for job %s", execution.JobName)
+		log.WithError(err).
+			WithField("job", execution.JobName).
+			Error("store: Error no executions found for job")
 	}
 
 	// Delete all execution results over the limit, starting from olders
@@ -414,21 +446,14 @@ func (s *Store) SetExecution(execution *Execution) (string, error) {
 			}).Debug("store: to detele key")
 			err := s.Client.Delete(fmt.Sprintf("%s/executions/%s/%s", s.keyspace, execs[i].JobName, execs[i].Key()))
 			if err != nil {
-				log.Errorf("store: Trying to delete overflowed execution %s", execs[i].Key())
+				log.WithError(err).
+					WithField("execution", execs[i].Key()).
+					Error("store: Error trying to delete overflowed execution")
 			}
 		}
 	}
 
 	return key, nil
-}
-
-func (s *Store) GetCurrentExecutions(nodeName string) ([]*Execution, error) {
-	res, err := s.Client.List(fmt.Sprintf("%s/current_executions/%s", s.keyspace, nodeName), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return s.unmarshalExecutions(res, nodeName)
 }
 
 func (s *Store) unmarshalExecutions(res []*store.KVPair, stopWord string) ([]*Execution, error) {
